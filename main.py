@@ -1,9 +1,37 @@
 from typing import Type, Any, Optional, List, Tuple, Callable
+import os
+import subprocess
 
-    
+CURRENT_WORKING_DIRECTORY = os.getcwd()
+KAFKA_FOLDERNAME = "kafka_2.12-2.3.0"
+KAFKA_DIRECTORY = CURRENT_WORKING_DIRECTORY + "/../" + KAFKA_FOLDERNAME
+
 def main():
+    create_kafka_topic("test", 9092, 1, 1)
     test()
 
+
+def start_kafka_zookeeper(zookeeper_properties_file_location: str):
+    subprocess.Popen(["bin/zookeeper-server-start.sh", zookeeper_properties_file_location], cwd=KAFKA_DIRECTORY)
+
+
+def start_kafka_server(server_properties_file_location: str):
+    subprocess.Popen(["bin/kafka-server-start.sh", server_properties_file_location], cwd=KAFKA_DIRECTORY)
+
+
+def create_kafka_topic(topic_name: str, port: int, replication_factor: int, partition_count: int):
+    subprocess.call(
+        [
+            "bin/kafka-topics.sh",
+            "--create",
+            "--bootstrap-server", 
+            "localhost:" + str(port),
+            "--replication-factor " + str(replication_factor),
+            "--partitions " + str(partition_count),
+            "--topic " + topic_name
+        ],
+        cwd=KAFKA_DIRECTORY
+    )
 
 def test():
     # create test computational graph nodes
@@ -25,6 +53,7 @@ def test():
 
     # generate new kafka nodes
     kafka_nodes = cg.generate_kafka_env()
+
 
 
 def filter_for_1(input_data: str) -> Optional[str]:
