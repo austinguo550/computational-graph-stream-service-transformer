@@ -20,13 +20,13 @@ TODO
 2. **User selects streaming framework and deploys**
 
     Developer calls some function on the `ComputationalGraph` object they've created to deploy their system using a certain framework. The function signature should be something like the following:
-    ```
+    ```python
     def deploy_system(system_type: Type(SystemTypes)) -> int:
     ```
 
     With a usage like so:
 
-    ```
+    ```python
     my_cg = ComputationalGraph(nodes, start_nodes, end_nodes, edges)
     my_cg.deploy_system(SystemTypes.kafka)
     ```
