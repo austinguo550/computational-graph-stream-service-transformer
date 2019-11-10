@@ -43,6 +43,19 @@ We need to go from `ComputaionalGraph` to running nodes on different servers wit
 - Server 1 must start running the node code
 - Thus, when running correctly, Node 1 is consuming from all subscribed topics, applying computations to them, and outputting to the correct topic
 
+### Approach
+
+It doesn't appear that we'll be touching much Kafka code at all. Instead, we just need to set up the environment which is apparently like so.
+
+1. Start up the main zookeeper server
+2. Spin up however many servers we want to be a part of the network
+
+At this point we should have servers that are ready to become producers, consumers etc
+
+3. Create all the topics we need (our edges in the computational graph)
+4. Create producers for topics (this is where I get confused... where are we creating the producer and how can we customize the work it does. We want to create a producer which is going to run the custom code the user provides for that node)
+5. Create consumers for topics (same concerns as above. In fact, we need to link the two together)
+6. Connect the shit together? 
 
 ---
 
