@@ -4,8 +4,10 @@ import subprocess
 import os
 import fileinput
 import re
+import pickle
 
 CURRENT_WORKING_DIRECTORY = os.getcwd()
+# I have 2.11-2.3.1 ... too lazy to download the other version
 KAFKA_FOLDERNAME = "kafka_2.11-2.3.1" if os.path.isdir(CURRENT_WORKING_DIRECTORY + "/kafka_2.11-2.3.1") else "kafka_2.12-2.3.0"
 KAFKA_DIRECTORY = CURRENT_WORKING_DIRECTORY + "/" + KAFKA_FOLDERNAME
 
@@ -65,67 +67,54 @@ class ComputationalGraph:
 
         # Start brokers
         lines = None
-        with open(KAFKA_DIRECTORY + "/config/" + 'server.properties', "r") as f:
+        with open(KAFKA_DIRECTORY + "/config/" + "server.properties", "r") as f:
             lines = f.readlines()
 
         start_port = 9092
         for i in range(0, num_brokers):
             new_broker_config_filename = "server-{}.properties".format(i)
-            regex_broker_id = re.compile('broker.id')
-            regex_ip_and_port = re.compile('listeners=PLAINTEXT')
+            regex_broker_id = re.compile("broker.id")
+            regex_ip_and_port = re.compile("listeners=PLAINTEXT")
+            regex_log_dir = re.compile("log.dirs")
 
             with open(KAFKA_DIRECTORY + "/config/" + new_broker_config_filename, "w") as f:
                 for line in lines:
                     broker_id_match = regex_broker_id.match(line)
                     ip_and_port_match = regex_ip_and_port.match(line)
+                    log_dir_match = regex_log_dir.match(line)
                     if broker_id_match:
-                        f.write('broker.id={}\n'.format(i))
+                        f.write("broker.id={}\n".format(i))
                     elif ip_and_port_match:
-                        f.write('listeners=PLAINTEXT://:{}\n'.format(start_port + i))
+                        f.write("listeners=PLAINTEXT://:{}\n".format(start_port + i))
+                    elif log_dir_match:
+                        f.write("log.dirs=/tmp/kafka-logs-{}".format(i))
                     else:
                         f.write(line)
         
             subprocess.Popen(["bin/kafka-server-start.sh", "config/" + new_broker_config_filename], cwd=KAFKA_DIRECTORY)
 
-        # TODO: Create topics
+        # Create Kafka topics
+        topics = [node.get_name() for node in self.stream_writer_subscribers.keys()]
+        for topic in topics:
+            subprocess.call(
+                [
+                    "bin/kafka-topics.sh",
+                    "--create",
+                    "--bootstrap-server", 
+                    "localhost:" + str(start_port),
+                    "--replication-factor", str(num_partition_replicas),
+                    "--partitions", str(num_topic_partitions),
+                    "--topic", topic
+                ],
+                cwd=KAFKA_DIRECTORY
+            )
 
-        # TODO: Spin up kafka node instances
+        # Create "sysfiles" directory to store pickled stuff
+        if not os.path.isdir(CURRENT_WORKING_DIRECTORY + "/sysfiles"):
+            os.mkdir(CURRENT_WORKING_DIRECTORY + "/sysfiles")
 
-
-        # create lookup table for incoming edges since kafka nodes need to know
-        # what to subscribe to
-        # for producer_node_index, consumer_node_index in self.edges:
-        #     if consumer_node_index not in subscription_lookup:
-        #         subscription_lookup[consumer_node_index] = [] 
-
-        #     subscription_lookup[consumer_node_index].append(producer_node_index)
-        #     producers_index_list.add(producer_node_index)
-
-        # # create kafka streams for producers
-        # for producer_index in producers_index_list:
-        #     new_stream_name = self.nodes[producer_index].get_name()
-        #     new_stream = "TODO" + new_stream_name
-        #     print("TODO Created new stream: ", new_stream_name)
-        #     kafka_streams[producer_index] = new_stream
-
-        # # create kafka nodes where we can pass in list of streams which it can subscribe to
-        # for i in range(len(self.nodes)):
-        #     current_node = self.nodes[i]
-
-        #     current_node_subscribed_streams = []
-        #     if i in subscription_lookup: 
-        #         current_node_subscribed_streams = list(map(
-        #             lambda producer_index: kafka_streams[producer_index], 
-        #             subscription_lookup[i]
-        #         ))
-            
-        #     new_kafka_node = KafkaNode(
-        #         current_node.get_name(),
-        #         current_node_subscribed_streams,
-        #         current_node.get_processing_function()
-        #     )
-
-        #     result_kafka_nodes.append(new_kafka_node)
-            
-        # # return list of created nodes
-        # return result_kafka_nodes
+        # TODO: Pickle all processing functions and start up node instances
+        for node in self.nodes:
+            processing_function = node.get_processing_function()
+            if processing_function != None:
+                pickle.dump(processing_function, open("./sysfiles/{}.pkl".format(node.get_name()), "wb"))

@@ -11,9 +11,10 @@ check:
 	mypy main.py
 
 clean:
-	-rm -rf /tmp/kafka-* /tmp/zookeeper* 2> /dev/null
-	-rm ./kafka_2.11-2.3.1/logs/* 2> /dev/null
-	-rm ./kafka_2.11-2.3.1/config/server-*.properties 2> /dev/null
+	-rm -rf /tmp/kafka-* /tmp/zookeeper &> /dev/null
+	-rm ./kafka_2.11-2.3.1/logs/* &> /dev/null
+	-rm ./kafka_2.11-2.3.1/config/server-*.properties &> /dev/null
+	-rm ./sysfiles/* &> /dev/null
 
 shutdown:
 	-./kafka_2.11-2.3.1/bin/zookeeper-server-stop.sh
