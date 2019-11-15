@@ -31,13 +31,13 @@ def create_comp_graph():
     start_node2 = DataSourceNode(name="start_node2", processing_function=data_source_proc_func, data_source='log2.txt')
     start_node3 = DataSourceNode(name="start_node3", processing_function=data_source_proc_func, data_source='log3.txt')
 
-    inter_node1 = IntermediateNode(name="inter_node1",processing_function=add3)
-    inter_node2 = IntermediateNode(name="inter_node2",processing_function=subtract4)
-    inter_node3 = IntermediateNode(name="inter_node3",processing_function=add6)
-    inter_node4 = IntermediateNode(name="inter_node4",processing_function=multiply5)
-    inter_node5 = IntermediateNode(name="inter_node5",processing_function=subtract10)
-    inter_node6 = IntermediateNode(name="inter_node6",processing_function=add8)
-    inter_node7 = IntermediateNode(name="inter_node7",processing_function=add100)
+    inter_node1 = IntermediateNode(name="inter_node1", processing_function=add3)
+    inter_node2 = IntermediateNode(name="inter_node2", processing_function=subtract4)
+    inter_node3 = IntermediateNode(name="inter_node3", processing_function=add6)
+    inter_node4 = IntermediateNode(name="inter_node4", processing_function=multiply5)
+    inter_node5 = IntermediateNode(name="inter_node5", processing_function=subtract10)
+    inter_node6 = IntermediateNode(name="inter_node6", processing_function=add8)
+    inter_node7 = IntermediateNode(name="inter_node7", processing_function=add100)
 
     end_node1 = TerminalNode(name="end_node1", processing_function=None, output_file_name="comp_output.txt")
 
