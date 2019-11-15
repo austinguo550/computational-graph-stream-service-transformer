@@ -1,28 +1,6 @@
 from typing import Type, Any, Optional, List, Tuple, Callable
 from computational_graph_lib import DataSourceNode, IntermediateNode, TerminalNode, ComputationalGraph
 
-# def start_kafka_zookeeper(zookeeper_properties_file_location: str):
-#     subprocess.Popen(["bin/zookeeper-server-start.sh", zookeeper_properties_file_location], cwd=KAFKA_DIRECTORY)
-
-
-# def start_kafka_server(server_properties_file_location: str):
-#     subprocess.Popen(["bin/kafka-server-start.sh", server_properties_file_location], cwd=KAFKA_DIRECTORY)
-
-
-# def create_kafka_topic(topic_name: str, port: int, replication_factor: int, partition_count: int):
-#     subprocess.call(
-#         [
-#             "bin/kafka-topics.sh",
-#             "--create",
-#             "--bootstrap-server", 
-#             "localhost:" + str(port),
-#             "--replication-factor " + str(replication_factor),
-#             "--partitions " + str(partition_count),
-#             "--topic " + topic_name
-#         ],
-#         cwd=KAFKA_DIRECTORY
-#     )
-
 def data_source_proc_func(msg: str):
     return int(msg)
 
@@ -85,12 +63,7 @@ def create_comp_graph():
     cg.generate_kafka_env()
     print("done")
 
-    # generate new kafka nodes
-    # kafka_nodes = cg.generate_kafka_env()
-
-
 def main():
-    # create_kafka_topic("test", 9092, 1, 1)
     create_comp_graph()
 
 if __name__ == "__main__":
