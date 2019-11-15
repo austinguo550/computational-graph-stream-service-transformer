@@ -9,3 +9,13 @@ test-consumer:
 
 check:
 	mypy main.py
+
+clean:
+	-rm -rf /tmp/kafka-* /tmp/zookeeper* 2> /dev/null
+	-rm ./kafka_2.11-2.3.1/logs/* 2> /dev/null
+	-rm ./kafka_2.11-2.3.1/config/server-*.properties 2> /dev/null
+
+shutdown:
+	-./kafka_2.11-2.3.1/bin/zookeeper-server-stop.sh
+	-./kafka_2.11-2.3.1/bin/kafka-server-stop.sh 
+

@@ -1,167 +1,97 @@
 from typing import Type, Any, Optional, List, Tuple, Callable
-import os
-import subprocess
+from computational_graph_lib import DataSourceNode, IntermediateNode, TerminalNode, ComputationalGraph
 
-CURRENT_WORKING_DIRECTORY = os.getcwd()
-KAFKA_FOLDERNAME = "kafka_2.12-2.3.0"
-KAFKA_DIRECTORY = CURRENT_WORKING_DIRECTORY + "/../" + KAFKA_FOLDERNAME
-
-def main():
-    create_kafka_topic("test", 9092, 1, 1)
-    test()
+# def start_kafka_zookeeper(zookeeper_properties_file_location: str):
+#     subprocess.Popen(["bin/zookeeper-server-start.sh", zookeeper_properties_file_location], cwd=KAFKA_DIRECTORY)
 
 
-def start_kafka_zookeeper(zookeeper_properties_file_location: str):
-    subprocess.Popen(["bin/zookeeper-server-start.sh", zookeeper_properties_file_location], cwd=KAFKA_DIRECTORY)
+# def start_kafka_server(server_properties_file_location: str):
+#     subprocess.Popen(["bin/kafka-server-start.sh", server_properties_file_location], cwd=KAFKA_DIRECTORY)
 
 
-def start_kafka_server(server_properties_file_location: str):
-    subprocess.Popen(["bin/kafka-server-start.sh", server_properties_file_location], cwd=KAFKA_DIRECTORY)
+# def create_kafka_topic(topic_name: str, port: int, replication_factor: int, partition_count: int):
+#     subprocess.call(
+#         [
+#             "bin/kafka-topics.sh",
+#             "--create",
+#             "--bootstrap-server", 
+#             "localhost:" + str(port),
+#             "--replication-factor " + str(replication_factor),
+#             "--partitions " + str(partition_count),
+#             "--topic " + topic_name
+#         ],
+#         cwd=KAFKA_DIRECTORY
+#     )
 
+def data_source_proc_func(msg: str):
+    return int(msg)
 
-def create_kafka_topic(topic_name: str, port: int, replication_factor: int, partition_count: int):
-    subprocess.call(
-        [
-            "bin/kafka-topics.sh",
-            "--create",
-            "--bootstrap-server", 
-            "localhost:" + str(port),
-            "--replication-factor " + str(replication_factor),
-            "--partitions " + str(partition_count),
-            "--topic " + topic_name
-        ],
-        cwd=KAFKA_DIRECTORY
-    )
+def add3(msg: int):
+    return msg + 3
 
-def test():
+def subtract4(msg: int):
+    return msg - 4
+
+def add6(msg: int):
+    return msg + 6
+
+def multiply5(msg: int):
+    return msg * 5
+
+def subtract10(msg: int):
+    return msg - 10
+
+def add8(msg: int):
+    return msg + 8
+
+def add100(msg: int):
+    return msg + 100
+
+def create_comp_graph():
     # create test computational graph nodes
-    start_node = ComputationalGraphNode("start_node")
-    node_1 = ComputationalGraphNode("node_1", filter_for_1)
-    node_1a = ComputationalGraphNode("node_1a", print_stream)
-    node_1b = ComputationalGraphNode("node_1b", count)
-    node_2 = ComputationalGraphNode("node_2", filter_for_2)
-    node_2a = ComputationalGraphNode("node_2a", count)
-    node_3 = ComputationalGraphNode("node_3", count)
-    node_overseer = ComputationalGraphNode("overseer", count)
-    
-    # computational graph components
-    cg_node_list = [start_node, node_1, node_1a, node_1b, node_2, node_2a, node_3, node_overseer]
-    cg_edge_list = [(0, 1), (1, 2), (1, 3), (0, 4), (4, 5), (0, 6), (1, 7), (4, 7), (6, 7), (7, 0)]
+    start_node1 = DataSourceNode(name="start_node1", processing_function=data_source_proc_func, data_source='log1.txt')
+    start_node2 = DataSourceNode(name="start_node2", processing_function=data_source_proc_func, data_source='log2.txt')
+    start_node3 = DataSourceNode(name="start_node3", processing_function=data_source_proc_func, data_source='log3.txt')
 
-    # create computational graph
-    cg = ComputationalGraph(cg_node_list, cg_edge_list)
+    inter_node1 = IntermediateNode(name="inter_node1",processing_function=add3)
+    inter_node2 = IntermediateNode(name="inter_node2",processing_function=subtract4)
+    inter_node3 = IntermediateNode(name="inter_node3",processing_function=add6)
+    inter_node4 = IntermediateNode(name="inter_node4",processing_function=multiply5)
+    inter_node5 = IntermediateNode(name="inter_node5",processing_function=subtract10)
+    inter_node6 = IntermediateNode(name="inter_node6",processing_function=add8)
+    inter_node7 = IntermediateNode(name="inter_node7",processing_function=add100)
+
+    end_node1 = TerminalNode(name="end_node1", processing_function=None, output_file_name="comp_output.txt")
+
+    # Create computational graph
+    node_list = [start_node1, start_node2, start_node3, inter_node1, inter_node2, inter_node3, inter_node4,
+                    inter_node5, inter_node6, inter_node7, end_node1]
+
+    cg = ComputationalGraph(node_list)
+
+    # Connect the edges cg.connect(from_node, to_node)
+    cg.connect(start_node1, inter_node1)
+    cg.connect(start_node2, inter_node1)
+    cg.connect(start_node3, inter_node2)
+    cg.connect(inter_node1, inter_node3)
+    cg.connect(inter_node1, inter_node4)
+    cg.connect(inter_node2, inter_node4)
+    cg.connect(inter_node3, inter_node5)
+    cg.connect(inter_node4, inter_node6)
+    cg.connect(inter_node5, inter_node7)
+    cg.connect(inter_node6, inter_node7)
+    cg.connect(inter_node7, end_node1)
+
+    cg.generate_kafka_env()
+    print("done")
 
     # generate new kafka nodes
-    kafka_nodes = cg.generate_kafka_env()
+    # kafka_nodes = cg.generate_kafka_env()
 
 
-
-def filter_for_1(input_data: str) -> Optional[str]:
-    """Filters the input stream for 1s and passes on the message if so"""
-    return input_data if "1" in input_data else None
-
-
-def filter_for_2(input_data: str) -> Optional[str]:
-    """Filters the input stream for 2s and passes on the message if so"""
-    return input_data if "2" in input_data else None
-
-
-def print_stream(input_data: str) -> Optional[str]:
-    print(input_data)
-    return None
-
-def count(input_data: str) -> Optional[str]:
-    print("TODO count")
-    return None
-
-
-
-class ComputationalGraphNode:
-    def __init__(self, name: str, processing_function: Callable[[str], Optional[str]] = None):
-        self.name = name
-        self.processing_function = processing_function
-    
-    def get_name(self):
-        return self.name
-    
-    def get_processing_function(self):
-        return self.processing_function
-    
-
-
-class ComputationalGraph:
-    def __init__(self, nodes: List[Type[ComputationalGraphNode]], edges: List[Tuple[int, int]]):
-        self.nodes = nodes
-        self.edges = edges
-    
-    def generate_kafka_env(self) -> List[Any]:
-        result_kafka_nodes = []
-        subscription_lookup = {}
-        producers_index_list = set([])
-        kafka_streams = {}
-
-        # create lookup table for incoming edges since kafka nodes need to know
-        # what to subscribe to
-        for producer_node_index, consumer_node_index in self.edges:
-            if consumer_node_index not in subscription_lookup:
-                subscription_lookup[consumer_node_index] = [] 
-
-            subscription_lookup[consumer_node_index].append(producer_node_index)
-            producers_index_list.add(producer_node_index)
-
-        # create kafka streams for producers
-        for producer_index in producers_index_list:
-            new_stream_name = self.nodes[producer_index].get_name()
-            new_stream = "TODO" + new_stream_name
-            print("TODO Created new stream: ", new_stream_name)
-            kafka_streams[producer_index] = new_stream
-
-        # create kafka nodes where we can pass in list of streams which it can subscribe to
-        for i in range(len(self.nodes)):
-            current_node = self.nodes[i]
-
-            current_node_subscribed_streams = []
-            if i in subscription_lookup: 
-                current_node_subscribed_streams = list(map(
-                    lambda producer_index: kafka_streams[producer_index], 
-                    subscription_lookup[i]
-                ))
-            
-            new_kafka_node = KafkaNode(
-                current_node.get_name(),
-                current_node_subscribed_streams,
-                current_node.get_processing_function()
-            )
-
-            result_kafka_nodes.append(new_kafka_node)
-            
-        # return list of created nodes
-        return result_kafka_nodes
-            
-
-        
-
-class KafkaNode:
-    # TODO on creating the node, subscribe to the streams (incoming connections)
-    def __init__(self, name: str, incoming_connections: List[Any], processing_function: Callable[[Any], Any]):
-        self.name = name
-        self.incoming_connections = incoming_connections
-        self.processing_function = processing_function
-        print("TODO:", name, "node subscribed to all subscriptions", incoming_connections)
-    
-
-    def get_name(self):
-        return self.name
-    
-
-    def get_incoming_connections(self):
-        return self.incoming_connections
-
-
-    def test_processing_function(self, incoming_data: Any):
-        return self.processing_function(incoming_data)
-
-
+def main():
+    # create_kafka_topic("test", 9092, 1, 1)
+    create_comp_graph()
 
 if __name__ == "__main__":
     main()
