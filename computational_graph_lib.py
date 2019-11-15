@@ -20,7 +20,6 @@ class ComputationalGraphNode:
     def get_processing_function(self):
         return self.processing_function
 
-
 class DataSourceNode(ComputationalGraphNode):
     def __init__(self, name: str, processing_function: Callable, data_source: str):
         ComputationalGraphNode.__init__(self, name=name, processing_function=processing_function)
@@ -41,22 +40,23 @@ class TerminalNode(ComputationalGraphNode):
     def get_output_file_name(self):
         return self.output_file_name
 
-
 class ComputationalGraph:
     def __init__(self, nodes: List[Type[ComputationalGraphNode]]):
         self.nodes = nodes
-        self.stream_writers = set()
+        self.stream_writer_subscribers = defaultdict(set)
         self.stream_consumer_subscription = defaultdict(set)
     
     def connect(self, from_node: Type[ComputationalGraphNode], to_node: Type[ComputationalGraphNode]):
-        self.stream_writers.add(from_node)
+        self.stream_writer_subscribers[from_node].add(to_node)
         self.stream_consumer_subscription[to_node].add(from_node)
 
-    def get_stream_writers(self):
-        return self.stream_writers
+    # Returns a list of consumer nodes that the writer node of interest is writing to
+    def get_writer_subscribers(self, writer):
+        return self.stream_writer_subscribers[writer]
     
-    def get_consumer_subscriptions(self, node):
-        return self.stream_consumer_subscription[node]
+    # Returns a list of writer nodes that the consumer node of interest is subscribed to
+    def get_consumer_subscriptions(self, consumer):
+        return self.stream_consumer_subscription[consumer]
 
     def generate_kafka_env(self, num_brokers=1, num_topic_partitions=1, num_partition_replicas=1) -> List[Any]:
 
