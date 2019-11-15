@@ -7,8 +7,7 @@ import re
 import pickle
 
 CURRENT_WORKING_DIRECTORY = os.getcwd()
-# I have 2.11-2.3.1 ... too lazy to download the other version
-KAFKA_FOLDERNAME = "kafka_2.11-2.3.1" if os.path.isdir(CURRENT_WORKING_DIRECTORY + "/kafka_2.11-2.3.1") else "kafka_2.12-2.3.0"
+KAFKA_FOLDERNAME = "kafka_2.12-2.3.0"
 KAFKA_DIRECTORY = CURRENT_WORKING_DIRECTORY + "/" + KAFKA_FOLDERNAME
 
 class ComputationalGraphNode:
@@ -35,7 +34,7 @@ class IntermediateNode(ComputationalGraphNode):
         ComputationalGraphNode.__init__(self, name=name, processing_function=processing_function)
 
 class TerminalNode(ComputationalGraphNode):
-    def __init__(self, name: str, processing_function, output_file_name: str):
+    def __init__(self, name: str, processing_function: Callable, output_file_name: str):
         ComputationalGraphNode.__init__(self, name=name, processing_function=processing_function)
         self.output_file_name = output_file_name
     
@@ -48,16 +47,17 @@ class ComputationalGraph:
         self.stream_writer_subscribers = defaultdict(set)
         self.stream_consumer_subscription = defaultdict(set)
     
-    def connect(self, from_node: Type[ComputationalGraphNode], to_node: Type[ComputationalGraphNode]):
-        self.stream_writer_subscribers[from_node].add(to_node)
-        self.stream_consumer_subscription[to_node].add(from_node)
+    def connect(self, edges: List[Tuple[Type[ComputationalGraphNode], Type[ComputationalGraphNode]]]):
+        for from_node, to_node in edges:
+            self.stream_writer_subscribers[from_node].add(to_node)
+            self.stream_consumer_subscription[to_node].add(from_node)
 
     # Returns a list of consumer nodes that the writer node of interest is writing to
-    def get_writer_subscribers(self, writer):
+    def get_writer_subscribers(self, writer: Type[ComputationalGraphNode]):
         return self.stream_writer_subscribers[writer]
     
     # Returns a list of writer nodes that the consumer node of interest is subscribed to
-    def get_consumer_subscriptions(self, consumer):
+    def get_consumer_subscriptions(self, consumer: Type[ComputationalGraphNode]):
         return self.stream_consumer_subscription[consumer]
 
     def generate_kafka_env(self, num_brokers=1, num_topic_partitions=1, num_partition_replicas=1) -> List[Any]:
@@ -66,9 +66,9 @@ class ComputationalGraph:
         subprocess.Popen(["bin/zookeeper-server-start.sh", "config/zookeeper.properties"], cwd=KAFKA_DIRECTORY)
 
         # Start brokers
-        lines = None
+        default_server_properties = None
         with open(KAFKA_DIRECTORY + "/config/" + "server.properties", "r") as f:
-            lines = f.readlines()
+            default_server_properties = f.readlines()
 
         start_port = 9092
         for i in range(0, num_brokers):
@@ -78,7 +78,7 @@ class ComputationalGraph:
             regex_log_dir = re.compile("log.dirs")
 
             with open(KAFKA_DIRECTORY + "/config/" + new_broker_config_filename, "w") as f:
-                for line in lines:
+                for line in default_server_properties:
                     broker_id_match = regex_broker_id.match(line)
                     ip_and_port_match = regex_ip_and_port.match(line)
                     log_dir_match = regex_log_dir.match(line)

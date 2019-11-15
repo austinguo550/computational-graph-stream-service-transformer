@@ -12,11 +12,11 @@ check:
 
 clean:
 	-rm -rf /tmp/kafka-* /tmp/zookeeper &> /dev/null
-	-rm ./kafka_2.11-2.3.1/logs/* &> /dev/null
-	-rm ./kafka_2.11-2.3.1/config/server-*.properties &> /dev/null
+	-rm ./kafka_2.12-2.3.0/logs/* &> /dev/null
+	-rm ./kafka_2.12-2.3.0/config/server-*.properties &> /dev/null
 	-rm ./sysfiles/* &> /dev/null
 
 shutdown:
-	-./kafka_2.11-2.3.1/bin/zookeeper-server-stop.sh
-	-./kafka_2.11-2.3.1/bin/kafka-server-stop.sh 
+	-./kafka_2.12-2.3.0/bin/zookeeper-server-stop.sh
+	-./kafka_2.12-2.3.0/bin/kafka-server-stop.sh 
 
