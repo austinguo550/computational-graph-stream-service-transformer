@@ -5,10 +5,28 @@ import os
 import fileinput
 import re
 import pickle
+import signal
+import time
 
 CURRENT_WORKING_DIRECTORY = os.getcwd()
 KAFKA_FOLDERNAME = "kafka_2.12-2.3.0"
 KAFKA_DIRECTORY = CURRENT_WORKING_DIRECTORY + "/" + KAFKA_FOLDERNAME
+
+class GracefulKiller:
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+        self.live_processes = []
+    
+    def add_process(self, process):
+        self.live_processes.append(process)
+
+    def exit_gracefully(self, signum, frame):
+        subprocess.call(["make", "shutdown"], cwd=CURRENT_WORKING_DIRECTORY)
+        subprocess.call(["make", "clean"], cwd=CURRENT_WORKING_DIRECTORY)
+        for process in self.live_processes:
+            os.kill(process.pid, signal.SIGINT)
+        exit()
 
 class ComputationalGraphNode:
     def __init__(self, name: str, processing_function: Callable = None):
@@ -46,6 +64,7 @@ class ComputationalGraph:
         self.nodes = nodes
         self.stream_writer_subscribers = defaultdict(set)
         self.stream_consumer_subscription = defaultdict(set)
+        self.graceful_killer = GracefulKiller()
     
     def connect(self, edges: List[Tuple[Type[ComputationalGraphNode], Type[ComputationalGraphNode]]]):
         for from_node, to_node in edges:
@@ -118,3 +137,9 @@ class ComputationalGraph:
             processing_function = node.get_processing_function()
             if processing_function != None:
                 pickle.dump(processing_function, open("./sysfiles/{}.pkl".format(node.get_name()), "wb"))
+            # new_process = subprocess.Popen(["python", "test.py"], cwd=CURRENT_WORKING_DIRECTORY)
+            # self.graceful_killer.add_process(new_process)
+        
+        while(True):
+            pass
+            

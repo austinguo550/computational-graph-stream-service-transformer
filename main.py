@@ -55,7 +55,6 @@ def create_comp_graph():
     cg.connect(edge_list)
 
     cg.generate_kafka_env()
-    print("done")
 
 def main():
     create_comp_graph()
