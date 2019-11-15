@@ -88,7 +88,6 @@ class ComputationalGraph:
             subprocess.Popen(["bin/kafka-server-start.sh", "config/" + new_broker_config_filename], cwd=KAFKA_DIRECTORY)
 
         # TODO: Create topics
-        kafka_topics = list(self.stream_writers)
 
         # TODO: Spin up kafka node instances
 
