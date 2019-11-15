@@ -6,7 +6,7 @@ import fileinput
 import re
 
 CURRENT_WORKING_DIRECTORY = os.getcwd()
-KAFKA_FOLDERNAME = "kafka_2.11-2.3.1"
+KAFKA_FOLDERNAME = "kafka_2.11-2.3.1" if os.path.isdir(CURRENT_WORKING_DIRECTORY + "/kafka_2.11-2.3.1") else "kafka_2.12-2.3.0"
 KAFKA_DIRECTORY = CURRENT_WORKING_DIRECTORY + "/" + KAFKA_FOLDERNAME
 
 class ComputationalGraphNode:
@@ -58,7 +58,6 @@ class ComputationalGraph:
     def get_consumer_subscriptions(self, node):
         return self.stream_consumer_subscription[node]
 
-
     def generate_kafka_env(self, num_brokers=1, num_topic_partitions=1, num_partition_replicas=1) -> List[Any]:
 
         # Start zookeeper
@@ -88,7 +87,10 @@ class ComputationalGraph:
         
             subprocess.Popen(["bin/kafka-server-start.sh", "config/" + new_broker_config_filename], cwd=KAFKA_DIRECTORY)
 
+        # TODO: Create topics
         kafka_topics = list(self.stream_writers)
+
+        # TODO: Spin up kafka node instances
 
 
         # create lookup table for incoming edges since kafka nodes need to know
@@ -128,23 +130,3 @@ class ComputationalGraph:
             
         # # return list of created nodes
         # return result_kafka_nodes
-    
-class KafkaNode:
-    # TODO on creating the node, subscribe to the streams (incoming connections)
-    def __init__(self, name: str, incoming_connections: List[Any], processing_function: Callable[[Any], Any]):
-        self.name = name
-        self.incoming_connections = incoming_connections
-        self.processing_function = processing_function
-        print("TODO:", name, "node subscribed to all subscriptions", incoming_connections)
-    
-
-    def get_name(self):
-        return self.name
-    
-
-    def get_incoming_connections(self):
-        return self.incoming_connections
-
-
-    def test_processing_function(self, incoming_data: Any):
-        return self.processing_function(incoming_data)
