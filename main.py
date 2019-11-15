@@ -48,17 +48,11 @@ def create_comp_graph():
     cg = ComputationalGraph(node_list)
 
     # Connect the edges cg.connect(from_node, to_node)
-    cg.connect(start_node1, inter_node1)
-    cg.connect(start_node2, inter_node1)
-    cg.connect(start_node3, inter_node2)
-    cg.connect(inter_node1, inter_node3)
-    cg.connect(inter_node1, inter_node4)
-    cg.connect(inter_node2, inter_node4)
-    cg.connect(inter_node3, inter_node5)
-    cg.connect(inter_node4, inter_node6)
-    cg.connect(inter_node5, inter_node7)
-    cg.connect(inter_node6, inter_node7)
-    cg.connect(inter_node7, end_node1)
+    edge_list = [(start_node1, inter_node1), (start_node2, inter_node1), (start_node3, inter_node2), (inter_node1, inter_node3)
+                (inter_node1, inter_node4), (inter_node2, inter_node4), (inter_node3, inter_node5), (inter_node4, inter_node6),
+                (inter_node5, inter_node7), (inter_node6, inter_node7), (inter_node7, end_node1)] 
+                
+    cg.connect(edge_list)
 
     cg.generate_kafka_env()
     print("done")
