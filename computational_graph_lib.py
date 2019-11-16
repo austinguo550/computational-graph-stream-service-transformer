@@ -4,9 +4,10 @@ import subprocess
 import os
 import fileinput
 import re
-import pickle
+import dill
 import signal
 import time
+import psutil
 
 CURRENT_WORKING_DIRECTORY = os.getcwd()
 KAFKA_FOLDERNAME = "kafka_2.12-2.3.0"
@@ -25,7 +26,9 @@ class GracefulKiller:
         subprocess.call(["make", "shutdown"], cwd=CURRENT_WORKING_DIRECTORY)
         subprocess.call(["make", "clean"], cwd=CURRENT_WORKING_DIRECTORY)
         for process in self.live_processes:
-            os.kill(process.pid, signal.SIGINT)
+            pid = process.pid
+            if psutil.pid_exists(pid):
+                os.kill(pid, signal.SIGINT)
         exit()
 
 class ComputationalGraphNode:
@@ -128,6 +131,8 @@ class ComputationalGraph:
                 cwd=KAFKA_DIRECTORY
             )
 
+        print("Initial setup done - Zookeeper, Broker(s), and Topic(s) created")
+
         # Create "sysfiles" directory to store pickled stuff
         if not os.path.isdir(CURRENT_WORKING_DIRECTORY + "/sysfiles"):
             os.mkdir(CURRENT_WORKING_DIRECTORY + "/sysfiles")
@@ -136,9 +141,9 @@ class ComputationalGraph:
         for node in self.nodes:
             processing_function = node.get_processing_function()
             if processing_function != None:
-                pickle.dump(processing_function, open("./sysfiles/{}.pkl".format(node.get_name()), "wb"))
-            # new_process = subprocess.Popen(["python", "test.py"], cwd=CURRENT_WORKING_DIRECTORY)
-            # self.graceful_killer.add_process(new_process)
+                with open("./sysfiles/{}.dill".format(node.get_name()), "wb") as dill_file:
+                    dill.dump(processing_function, dill_file)
+            # TODO: check the node type and spin up the corresponding node script
         
         while(True):
             pass
