@@ -64,6 +64,12 @@ class TerminalNode(ComputationalGraphNode):
 
 class ComputationalGraph:
     def __init__(self, nodes: List[Type[ComputationalGraphNode]]):
+        # Check to see if node names given are all unique
+        node_names = {node.get_name() for node in nodes}
+        if len(node_names) != len(nodes):
+            print("ERROR - All node names must be unique")
+            exit()
+
         self.nodes = nodes
         self.stream_writer_subscribers = defaultdict(set)
         self.stream_consumer_subscription = defaultdict(set)
@@ -134,16 +140,38 @@ class ComputationalGraph:
         print("Initial setup done - Zookeeper, Broker(s), and Topic(s) created")
 
         # Create "sysfiles" directory to store pickled stuff
-        if not os.path.isdir(CURRENT_WORKING_DIRECTORY + "/sysfiles"):
-            os.mkdir(CURRENT_WORKING_DIRECTORY + "/sysfiles")
+        sysfiles_dir_path = CURRENT_WORKING_DIRECTORY + "/sysfiles"
+        if not os.path.isdir(sysfiles_dir_path):
+            os.mkdir(sysfiles_dir_path)
 
-        # TODO: Pickle all processing functions and start up node instances
+        # Pickle all processing functions and start up node instances
         for node in self.nodes:
+            node_name = node.get_name()
             processing_function = node.get_processing_function()
             if processing_function != None:
                 with open("./sysfiles/{}.dill".format(node.get_name()), "wb") as dill_file:
                     dill.dump(processing_function, dill_file)
-            # TODO: check the node type and spin up the corresponding node script
+            
+            if isinstance(node, DataSourceNode):
+                print("Starting up DataSourceNode {}".format(node_name))
+                data_source = node.get_data_source()
+                subprocess.Popen(["python3", "kafka-datasourcenode.py", "--name", node_name, "--input_file", data_source,
+                "--broker_port_start", str(start_port), "--num_brokers", str(num_brokers)], cwd=CURRENT_WORKING_DIRECTORY)
+            
+            if isinstance(node, IntermediateNode):
+                print("Starting up IntermediateNode {}".format(node_name))
+                subscription_str = ",".join([subscription.get_name() for subscription in self.get_consumer_subscriptions(node)])
+                subprocess.Popen(["python3", "kafka-intermediatenode.py", "--name", node_name, "--topic_subscriptions", 
+                subscription_str, "--broker_port_start", str(start_port), "--num_brokers", str(num_brokers)], 
+                cwd=CURRENT_WORKING_DIRECTORY)
+
+            if isinstance(node, TerminalNode):
+                print("Starting up TerminalNode {}".format(node_name))
+                output_file = node.get_output_file_name()
+                subscription_str = ",".join([subscription.get_name() for subscription in self.get_consumer_subscriptions(node)])
+                subprocess.Popen(["python3", "kafka-terminalnode.py", "--name", node_name, "--topic_subscriptions", 
+                subscription_str, "--broker_port_start", str(start_port), "--num_brokers", str(num_brokers),
+                "--output_file", output_file], cwd=CURRENT_WORKING_DIRECTORY)
         
         while(True):
             pass
