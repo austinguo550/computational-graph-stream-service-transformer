@@ -12,6 +12,7 @@ import psutil
 CURRENT_WORKING_DIRECTORY = os.getcwd()
 KAFKA_FOLDERNAME = "kafka_2.12-2.3.0"
 KAFKA_DIRECTORY = CURRENT_WORKING_DIRECTORY + "/" + KAFKA_FOLDERNAME
+START_PORT = 9092
 
 class GracefulKiller:
     def __init__(self):
@@ -98,7 +99,6 @@ class ComputationalGraph:
         with open(KAFKA_DIRECTORY + "/config/" + "server.properties", "r") as f:
             default_server_properties = f.readlines()
 
-        start_port = 9092
         for i in range(0, num_brokers):
             new_broker_config_filename = "server-{}.properties".format(i)
             regex_broker_id = re.compile("broker.id")
@@ -113,7 +113,7 @@ class ComputationalGraph:
                     if broker_id_match:
                         f.write("broker.id={}\n".format(i))
                     elif ip_and_port_match:
-                        f.write("listeners=PLAINTEXT://:{}\n".format(start_port + i))
+                        f.write("listeners=PLAINTEXT://:{}\n".format(START_PORT + i))
                     elif log_dir_match:
                         f.write("log.dirs=/tmp/kafka-logs-{}".format(i))
                     else:
@@ -129,7 +129,7 @@ class ComputationalGraph:
                     "bin/kafka-topics.sh",
                     "--create",
                     "--bootstrap-server", 
-                    "localhost:" + str(start_port),
+                    "localhost:" + str(START_PORT),
                     "--replication-factor", str(num_partition_replicas),
                     "--partitions", str(num_topic_partitions),
                     "--topic", topic
@@ -156,13 +156,13 @@ class ComputationalGraph:
                 print("Starting up DataSourceNode {}".format(node_name))
                 data_source = node.get_data_source()
                 subprocess.Popen(["python3", "kafka-datasourcenode.py", "--name", node_name, "--input_file", data_source,
-                "--broker_port_start", str(start_port), "--num_brokers", str(num_brokers)], cwd=CURRENT_WORKING_DIRECTORY)
+                "--broker_port_start", str(START_PORT), "--num_brokers", str(num_brokers)], cwd=CURRENT_WORKING_DIRECTORY)
             
             if isinstance(node, IntermediateNode):
                 print("Starting up IntermediateNode {}".format(node_name))
                 subscription_str = ",".join([subscription.get_name() for subscription in self.get_consumer_subscriptions(node)])
                 subprocess.Popen(["python3", "kafka-intermediatenode.py", "--name", node_name, "--topic_subscriptions", 
-                subscription_str, "--broker_port_start", str(start_port), "--num_brokers", str(num_brokers)], 
+                subscription_str, "--broker_port_start", str(START_PORT), "--num_brokers", str(num_brokers)], 
                 cwd=CURRENT_WORKING_DIRECTORY)
 
             if isinstance(node, TerminalNode):
@@ -170,7 +170,7 @@ class ComputationalGraph:
                 output_file = node.get_output_file_name()
                 subscription_str = ",".join([subscription.get_name() for subscription in self.get_consumer_subscriptions(node)])
                 subprocess.Popen(["python3", "kafka-terminalnode.py", "--name", node_name, "--topic_subscriptions", 
-                subscription_str, "--broker_port_start", str(start_port), "--num_brokers", str(num_brokers),
+                subscription_str, "--broker_port_start", str(START_PORT), "--num_brokers", str(num_brokers),
                 "--output_file", output_file], cwd=CURRENT_WORKING_DIRECTORY)
         
         while(True):
