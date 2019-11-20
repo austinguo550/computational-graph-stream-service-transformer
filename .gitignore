@@ -2,3 +2,5 @@ kafka_2*
 __pycache__
 sysfiles
 .mypy_cache
+.vscode
+env

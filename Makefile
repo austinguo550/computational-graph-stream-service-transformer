@@ -19,4 +19,3 @@ clean:
 shutdown:
 	-./kafka_2.12-2.3.0/bin/zookeeper-server-stop.sh
 	-./kafka_2.12-2.3.0/bin/kafka-server-stop.sh 
-
