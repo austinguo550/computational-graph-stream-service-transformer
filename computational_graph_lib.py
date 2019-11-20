@@ -92,18 +92,18 @@ class ComputationalGraph:
     def generate_kafka_env(self, num_brokers=1, num_topic_partitions=1, num_partition_replicas=1) -> List[Any]:
 
         # Start zookeeper
-        subprocess.Popen(["bin/zookeeper-server-start.sh", "config/zookeeper.properties"], cwd=KAFKA_DIRECTORY)
+        # subprocess.Popen(["bin/zookeeper-server-start.sh", "config/zookeeper.properties"], cwd=KAFKA_DIRECTORY)
 
         # Start brokers
         default_server_properties = None
         with open(KAFKA_DIRECTORY + "/config/" + "server.properties", "r") as f:
             default_server_properties = f.readlines()
 
+        regex_broker_id = re.compile("broker.id")
+        regex_ip_and_port = re.compile("listeners=PLAINTEXT")
+        regex_log_dir = re.compile("log.dirs")
         for i in range(0, num_brokers):
             new_broker_config_filename = "server-{}.properties".format(i)
-            regex_broker_id = re.compile("broker.id")
-            regex_ip_and_port = re.compile("listeners=PLAINTEXT")
-            regex_log_dir = re.compile("log.dirs")
 
             with open(KAFKA_DIRECTORY + "/config/" + new_broker_config_filename, "w") as f:
                 for line in default_server_properties:
@@ -119,59 +119,74 @@ class ComputationalGraph:
                     else:
                         f.write(line)
         
-            subprocess.Popen(["bin/kafka-server-start.sh", "config/" + new_broker_config_filename], cwd=KAFKA_DIRECTORY)
+            # subprocess.Popen(["bin/kafka-server-start.sh", "config/" + new_broker_config_filename], cwd=KAFKA_DIRECTORY)
 
         # Create Kafka topics
-        topics = [node.get_name() for node in self.stream_writer_subscribers.keys()]
-        for topic in topics:
-            subprocess.call(
-                [
-                    "bin/kafka-topics.sh",
-                    "--create",
-                    "--bootstrap-server", 
-                    "localhost:" + str(START_PORT),
-                    "--replication-factor", str(num_partition_replicas),
-                    "--partitions", str(num_topic_partitions),
-                    "--topic", topic
-                ],
-                cwd=KAFKA_DIRECTORY
-            )
+        # topics = [node.get_name() for node in self.stream_writer_subscribers.keys()]
+        # for topic in topics:
+        #     subprocess.call(
+        #         [
+        #             "bin/kafka-topics.sh",
+        #             "--create",
+        #             "--bootstrap-server", 
+        #             "localhost:" + str(START_PORT),
+        #             "--replication-factor", str(num_partition_replicas),
+        #             "--partitions", str(num_topic_partitions),
+        #             "--topic", topic
+        #         ],
+        #         cwd=KAFKA_DIRECTORY
+        #     )
 
         print("Initial setup done - Zookeeper, Broker(s), and Topic(s) created")
 
-        # Create "sysfiles" directory to store pickled stuff
-        sysfiles_dir_path = CURRENT_WORKING_DIRECTORY + "/sysfiles"
-        if not os.path.isdir(sysfiles_dir_path):
-            os.mkdir(sysfiles_dir_path)
+        def generate_sysfiles(directory_name: str, node_name: str, processing_function):
+            print("Generating {} {} sysfiles".format(directory_name, node_name))
+
+            sysfiles_dir_path = CURRENT_WORKING_DIRECTORY + "/{}/sysfiles/{}/sysfiles".format(directory_name, node_name)
+            if not os.path.isdir(sysfiles_dir_path):
+                os.makedirs(sysfiles_dir_path)
+
+            if processing_function != None:
+                with open("{}/{}.dill".format(sysfiles_dir_path, node_name), "wb") as dill_file:
+                    dill.dump(processing_function, dill_file)
+
+        def build_docker_image(directory_name: str, node_name: str, **kwargs):
+            print("Building {} {} docker image".format(directory_name, node_name))
+
+            image_home_path = CURRENT_WORKING_DIRECTORY + "/" + directory_name
+            container_version = 1.0
+            args_list = []
+            for k, v in kwargs.items():
+                args_list.extend(["--build-arg", "{}={}".format(k, v)])
+            subprocess.Popen(["docker", "build", "--no-cache"] + args_list + \
+                ["-t", "{}:{}".format(directory_name, container_version), image_home_path])
 
         # Pickle all processing functions and start up node instances
         for node in self.nodes:
             node_name = node.get_name()
             processing_function = node.get_processing_function()
-            if processing_function != None:
-                with open("./sysfiles/{}.dill".format(node.get_name()), "wb") as dill_file:
-                    dill.dump(processing_function, dill_file)
             
             if isinstance(node, DataSourceNode):
-                print("Starting up DataSourceNode {}".format(node_name))
+                directory_name = "kafka-datasourcenode"
                 data_source = node.get_data_source()
-                subprocess.Popen(["python3", "kafka-datasourcenode.py", "--name", node_name, "--input_file", data_source,
-                "--broker_port_start", str(START_PORT), "--num_brokers", str(num_brokers)], cwd=CURRENT_WORKING_DIRECTORY)
+                generate_sysfiles(directory_name, node_name, processing_function)
+                build_docker_image(directory_name, node_name, name=node_name, data_source=data_source, broker_port_start=9092, num_brokers=1)
+                # print("Starting up DataSourceNode {}".format(node_name))
             
             if isinstance(node, IntermediateNode):
-                print("Starting up IntermediateNode {}".format(node_name))
+                directory_name = "kafka-intermediatenode"
                 subscription_str = ",".join([subscription.get_name() for subscription in self.get_consumer_subscriptions(node)])
-                subprocess.Popen(["python3", "kafka-intermediatenode.py", "--name", node_name, "--topic_subscriptions", 
-                subscription_str, "--broker_port_start", str(START_PORT), "--num_brokers", str(num_brokers)], 
-                cwd=CURRENT_WORKING_DIRECTORY)
+                generate_sysfiles(directory_name, node_name, processing_function)
+                build_docker_image(directory_name, node_name, name=node_name, topic_subscriptions=subscription_str, broker_port_start=9092, num_brokers=1)
+                # print("Starting up IntermediateNode {}".format(node_name))
 
             if isinstance(node, TerminalNode):
-                print("Starting up TerminalNode {}".format(node_name))
+                directory_name = "kafka-terminalnode"
                 output_file = node.get_output_file_name()
                 subscription_str = ",".join([subscription.get_name() for subscription in self.get_consumer_subscriptions(node)])
-                subprocess.Popen(["python3", "kafka-terminalnode.py", "--name", node_name, "--topic_subscriptions", 
-                subscription_str, "--broker_port_start", str(START_PORT), "--num_brokers", str(num_brokers),
-                "--output_file", output_file], cwd=CURRENT_WORKING_DIRECTORY)
+                generate_sysfiles("kafka-terminalnode", node_name, processing_function)
+                build_docker_image(directory_name, node_name, name=node_name, topic_subscriptions=subscription_str, broker_port_start=9092, num_brokers=1, output_file=output_file)
+                # print("Starting up TerminalNode {}".format(node_name))
         
         while(True):
             pass
