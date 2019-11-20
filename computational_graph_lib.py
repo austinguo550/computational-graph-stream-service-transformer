@@ -150,16 +150,19 @@ class ComputationalGraph:
                 with open("{}/{}.dill".format(sysfiles_dir_path, node_name), "wb") as dill_file:
                     dill.dump(processing_function, dill_file)
 
-        def build_docker_image(directory_name: str, node_name: str, **kwargs):
+        def build_docker_image(directory_name: str, node_name: str):
             print("Building {} {} docker image".format(directory_name, node_name))
 
             image_home_path = CURRENT_WORKING_DIRECTORY + "/" + directory_name
             container_version = 1.0
-            args_list = []
-            for k, v in kwargs.items():
-                args_list.extend(["--build-arg", "{}={}".format(k, v)])
-            subprocess.Popen(["docker", "build", "--no-cache"] + args_list + \
-                ["-t", "{}:{}".format(directory_name, container_version), image_home_path])
+            subprocess.Popen(["docker", "build", "--no-cache"] + \
+                ["-t", "{}_{}:{}".format(directory_name, node_name, container_version), image_home_path])
+
+        def run_docker_container(directory_name: str, node_name: str, *argv):
+            print("Starting up {} {} docker container".format(directory_name, node_name))
+
+            container_version = 1.0
+            subprocess.Popen(["docker", "container", "run", "{}_{}:{}".format(directory_name, node_name, container_version)] + list(argv))
 
         # Pickle all processing functions and start up node instances
         for node in self.nodes:
@@ -169,24 +172,28 @@ class ComputationalGraph:
             if isinstance(node, DataSourceNode):
                 directory_name = "kafka-datasourcenode"
                 data_source = node.get_data_source()
+
                 generate_sysfiles(directory_name, node_name, processing_function)
-                build_docker_image(directory_name, node_name, name=node_name, data_source=data_source, broker_port_start=9092, num_brokers=1)
-                # print("Starting up DataSourceNode {}".format(node_name))
+                build_docker_image(directory_name, node_name)
+                # run_docker_container(directory_name, node_name, "--name {}".format(node_name), "--input_file {}".format(data_source), "--broker_port_start {}".format(9092), "--num_brokers {}".format(1))
+                run_docker_container(directory_name, node_name, "--name", node_name, "--input_file", data_source, "--broker_port_start", "9092", "--num_brokers", "1")
             
             if isinstance(node, IntermediateNode):
                 directory_name = "kafka-intermediatenode"
                 subscription_str = ",".join([subscription.get_name() for subscription in self.get_consumer_subscriptions(node)])
+
                 generate_sysfiles(directory_name, node_name, processing_function)
-                build_docker_image(directory_name, node_name, name=node_name, topic_subscriptions=subscription_str, broker_port_start=9092, num_brokers=1)
-                # print("Starting up IntermediateNode {}".format(node_name))
+                build_docker_image(directory_name, node_name)
+                run_docker_container(directory_name, node_name, "--name", node_name, "--topic_subscriptions", subscription_str, "--broker_port_start", "9092", "--num_brokers", "1")
 
             if isinstance(node, TerminalNode):
                 directory_name = "kafka-terminalnode"
                 output_file = node.get_output_file_name()
                 subscription_str = ",".join([subscription.get_name() for subscription in self.get_consumer_subscriptions(node)])
+
                 generate_sysfiles("kafka-terminalnode", node_name, processing_function)
-                build_docker_image(directory_name, node_name, name=node_name, topic_subscriptions=subscription_str, broker_port_start=9092, num_brokers=1, output_file=output_file)
-                # print("Starting up TerminalNode {}".format(node_name))
+                build_docker_image(directory_name, node_name)
+                run_docker_container(directory_name, node_name, "--name", node_name, "--topic_subscriptions", subscription_str, "--broker_port_start", "9092", "--num_brokers", "1", "--output_file", output_file)
         
         while(True):
             pass
