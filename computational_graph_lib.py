@@ -92,7 +92,7 @@ class ComputationalGraph:
     def generate_kafka_env(self, num_brokers=1, num_topic_partitions=1, num_partition_replicas=1) -> List[Any]:
 
         # Start zookeeper
-        # subprocess.Popen(["bin/zookeeper-server-start.sh", "config/zookeeper.properties"], cwd=KAFKA_DIRECTORY)
+        subprocess.Popen(["bin/zookeeper-server-start.sh", "config/zookeeper.properties"], cwd=KAFKA_DIRECTORY)
 
         # Start brokers
         default_server_properties = None
@@ -119,23 +119,23 @@ class ComputationalGraph:
                     else:
                         f.write(line)
         
-            # subprocess.Popen(["bin/kafka-server-start.sh", "config/" + new_broker_config_filename], cwd=KAFKA_DIRECTORY)
+            subprocess.Popen(["bin/kafka-server-start.sh", "config/" + new_broker_config_filename], cwd=KAFKA_DIRECTORY)
 
         # Create Kafka topics
-        # topics = [node.get_name() for node in self.stream_writer_subscribers.keys()]
-        # for topic in topics:
-        #     subprocess.call(
-        #         [
-        #             "bin/kafka-topics.sh",
-        #             "--create",
-        #             "--bootstrap-server", 
-        #             "localhost:" + str(START_PORT),
-        #             "--replication-factor", str(num_partition_replicas),
-        #             "--partitions", str(num_topic_partitions),
-        #             "--topic", topic
-        #         ],
-        #         cwd=KAFKA_DIRECTORY
-        #     )
+        topics = [node.get_name() for node in self.stream_writer_subscribers.keys()]
+        for topic in topics:
+            subprocess.call(
+                [
+                    "bin/kafka-topics.sh",
+                    "--create",
+                    "--bootstrap-server", 
+                    "localhost:" + str(START_PORT),
+                    "--replication-factor", str(num_partition_replicas),
+                    "--partitions", str(num_topic_partitions),
+                    "--topic", topic
+                ],
+                cwd=KAFKA_DIRECTORY
+            )
 
         print("Initial setup done - Zookeeper, Broker(s), and Topic(s) created")
 
@@ -155,14 +155,14 @@ class ComputationalGraph:
 
             image_home_path = CURRENT_WORKING_DIRECTORY + "/" + directory_name
             container_version = 1.0
-            subprocess.Popen(["docker", "build", "--no-cache"] + \
+            subprocess.Popen(["docker", "build", "--no-cache", "--build-arg", "name={}".format(node_name)] + \
                 ["-t", "{}_{}:{}".format(directory_name, node_name, container_version), image_home_path])
 
         def run_docker_container(directory_name: str, node_name: str, *argv):
             print("Starting up {} {} docker container".format(directory_name, node_name))
 
             container_version = 1.0
-            subprocess.Popen(["docker", "container", "run", "{}_{}:{}".format(directory_name, node_name, container_version)] + list(argv))
+            subprocess.Popen(["docker", "container", "run", "--network=host", "{}_{}:{}".format(directory_name, node_name, container_version)] + list(argv))
 
         # Pickle all processing functions and start up node instances
         for node in self.nodes:
@@ -175,7 +175,6 @@ class ComputationalGraph:
 
                 generate_sysfiles(directory_name, node_name, processing_function)
                 build_docker_image(directory_name, node_name)
-                # run_docker_container(directory_name, node_name, "--name {}".format(node_name), "--input_file {}".format(data_source), "--broker_port_start {}".format(9092), "--num_brokers {}".format(1))
                 run_docker_container(directory_name, node_name, "--name", node_name, "--input_file", data_source, "--broker_port_start", "9092", "--num_brokers", "1")
             
             if isinstance(node, IntermediateNode):

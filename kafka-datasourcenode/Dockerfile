@@ -21,7 +21,7 @@ COPY kafka-datasourcenode.py .
 ENTRYPOINT [ "python3", "kafka-datasourcenode.py" ]
 
 # build docker image
-# docker build --no-cache --build-arg name=start_node1 -t kafka-datasourcenode_start_node1:1.0
+# docker build --no-cache --build-arg name=start_node1 -t kafka-datasourcenode_start_node1:1.0 .
 
 # run docker container
 # docker container run kafka-datasourcenode_start_node1:1.0 --name start_node1 --input_file log1.txt --broker_port_start 9092 --num_brokers 1
