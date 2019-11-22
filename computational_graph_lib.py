@@ -48,6 +48,7 @@ class DataSourceNode(ComputationalGraphNode):
         ComputationalGraphNode.__init__(self, name=name, processing_function=processing_function)
         self.data_source = data_source
     
+    # TODO generalize this via a DataSource class
     def get_data_source(self):
         return self.data_source
 
@@ -71,6 +72,7 @@ class ComputationalGraph:
             print("ERROR - All node names must be unique")
             exit()
 
+        # self.nodes = sorted(nodes, key=lambda node: node.get_name())
         self.nodes = nodes
         self.stream_writer_subscribers = defaultdict(set)
         self.stream_consumer_subscription = defaultdict(set)
@@ -155,14 +157,14 @@ class ComputationalGraph:
 
             image_home_path = CURRENT_WORKING_DIRECTORY + "/" + directory_name
             container_version = 1.0
-            subprocess.Popen(["docker", "build", "--no-cache", "--build-arg", "name={}".format(node_name)] + \
+            subprocess.call(["docker", "build", "--no-cache", "--build-arg", "name={}".format(node_name)] + \
                 ["-t", "{}_{}:{}".format(directory_name, node_name, container_version), image_home_path])
 
         def run_docker_container(directory_name: str, node_name: str, *argv):
             print("Starting up {} {} docker container".format(directory_name, node_name))
 
             container_version = 1.0
-            subprocess.Popen(["docker", "container", "run", "--network=host", "{}_{}:{}".format(directory_name, node_name, container_version)] + list(argv))
+            subprocess.Popen(["docker", "container", "run", "{}_{}:{}".format(directory_name, node_name, container_version)] + list(argv))
 
         # Pickle all processing functions and start up node instances
         for node in self.nodes:

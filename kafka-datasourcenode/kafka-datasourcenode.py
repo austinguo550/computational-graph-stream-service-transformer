@@ -30,10 +30,11 @@ def main():
     # datasource node will connect to them all
     broker_port_start = parsed_args.broker_port_start
     num_brokers = parsed_args.num_brokers
-    bootstrap_server_str = "localhost:{}".format(broker_port_start)
     print("PRODUCER trying to connect", flush=True)
+    localhost = "docker.for.mac.localhost"
+    bootstrap_server_str = "{}:{}".format(localhost, broker_port_start)
     for i in range(1, num_brokers):
-        bootstrap_server_str += ",localhost:{}".format(broker_port_start + i)
+        bootstrap_server_str += ",{}:{}".format(localhost, broker_port_start + i)
     p = Producer({'bootstrap.servers': bootstrap_server_str})
     print("PRODUCER CONNECTED TO BROKER", flush=True)
     def delivery_report(err, msg):

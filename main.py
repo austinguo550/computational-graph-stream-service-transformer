@@ -47,6 +47,9 @@ def create_comp_graph():
     edge_list = [(start_node1, inter_node1), (start_node2, inter_node1), (start_node3, inter_node2), (inter_node1, inter_node3),
                 (inter_node1, inter_node4), (inter_node2, inter_node4), (inter_node3, inter_node5), (inter_node4, inter_node6),
                 (inter_node5, inter_node7), (inter_node6, inter_node7), (inter_node7, end_node1)]            
+    
+    # TODO user shouldn't have to manually call connect. Just have them pass
+    # the edge list and we'll connect them for them in the constructor
     cg.connect(edge_list)
     cg.generate_kafka_env()
 

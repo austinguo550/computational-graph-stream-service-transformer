@@ -34,9 +34,10 @@ def main():
     # Terminal node will connect to them all
     broker_port_start = parsed_args.broker_port_start
     num_brokers = parsed_args.num_brokers
-    bootstrap_server_str = "localhost:{}".format(broker_port_start)
+    localhost = "docker.for.mac.localhost"
+    bootstrap_server_str = "{}:{}".format(localhost, broker_port_start)
     for i in range(1, num_brokers):
-        bootstrap_server_str += ",localhost:{}".format(broker_port_start + i)
+        bootstrap_server_str += ",{}:{}".format(localhost, broker_port_start + i)
 
     c = Consumer({
         'bootstrap.servers': bootstrap_server_str,
