@@ -4,7 +4,7 @@ import os
 import dill
 
 def main():
-    print("Creating Kafka DataSource Node")
+    print("Creating Kafka DataSource Node", flush=True)
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--name', type=str, required=True)
@@ -30,11 +30,13 @@ def main():
     # datasource node will connect to them all
     broker_port_start = parsed_args.broker_port_start
     num_brokers = parsed_args.num_brokers
-    bootstrap_server_str = "localhost:{}".format(broker_port_start)
+    print("PRODUCER trying to connect", flush=True)
+    localhost = "docker.for.mac.localhost"
+    bootstrap_server_str = "{}:{}".format(localhost, broker_port_start)
     for i in range(1, num_brokers):
-        bootstrap_server_str += ",localhost:{}".format(broker_port_start + i)
+        bootstrap_server_str += ",{}:{}".format(localhost, broker_port_start + i)
     p = Producer({'bootstrap.servers': bootstrap_server_str})
-
+    print("PRODUCER CONNECTED TO BROKER", flush=True)
     def delivery_report(err, msg):
         """ Called once for each message produced to indicate delivery result.
             Triggered by poll() or flush(). """
